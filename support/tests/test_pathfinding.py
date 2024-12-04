@@ -7,21 +7,23 @@ import support as sup
 
 @pytest.fixture()
 def matrix():
-    return [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 8, 9],
-    ]
+    return sup.Matrix(
+        [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+    )
 
 
 @pytest.fixture()
 def graph(matrix):
-    neighbors_cross = sup.max_bounds_closure(sup.neighbors_cross, matrix)
-
     return {
-        (m, n): {(n_m, n_n): matrix[n_m][n_n] for n_m, n_n in neighbors_cross(m, n)}
-        for m in range(len(matrix))
-        for n in range(len(matrix[0]))
+        (m, n): {
+            (n_m, n_n): matrix[n_m][n_n] for n_m, n_n in matrix.neighbors_cross(m, n)
+        }
+        for m in range(matrix.m_len)
+        for n in range(matrix.n_len)
     }
 
 

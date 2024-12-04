@@ -16,24 +16,18 @@ MAS = [["M", "A", "S"], ["S", "A", "M"]]
 
 def compute(s: str) -> int:
     total = 0
-    matrix, m_len, n_len = sup.make_matrix_from_input(s)
+    matrix = sup.Matrix.create_from_input(s)
+    down_right = sup.Direction.DOWNRIGHT
+    down_left = sup.Direction.DOWNLEFT
     for m, line in enumerate(matrix):
-        if m > m_len - 3:
+        if m > matrix.m_len - 3:
             break
         for n, char in enumerate(line):
-            if n > n_len - 3:
+            if n > matrix.n_len - 3:
                 break
 
-            first = [
-                matrix[m][n],
-                matrix[m + 1][n + 1],
-                matrix[m + 2][n + 2],
-            ]
-            second = [
-                matrix[m][n + 2],
-                matrix[m + 1][n + 1],
-                matrix[m + 2][n],
-            ]
+            first = matrix.get_values(m, n, down_right, 3)
+            second = matrix.get_values(m, n + 2, down_left, 3)
             if all(val in MAS for val in (first, second)):
                 total += 1
 
@@ -81,7 +75,7 @@ if __name__ == "__main__":
     print("Answer is:     ", compute(input_data))
 
     if "-b" in sys.argv:
-        number_of_runs = 1000
+        number_of_runs = 100
         bench_time = timeit.timeit(
             "compute(data)",
             setup="from __main__ import compute",

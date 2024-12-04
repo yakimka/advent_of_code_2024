@@ -1,6 +1,6 @@
 import pytest
 
-from support import make_matrix_from_input
+from support import Matrix
 
 
 @pytest.mark.parametrize(
@@ -14,12 +14,9 @@ from support import make_matrix_from_input
     ],
 )
 def test_make_string_matrix_from_input(input_s) -> None:
-    result = make_matrix_from_input(input_s)
-    matrix, m_len, n_len = result
+    result = Matrix.create_from_input(input_s)
 
-    assert matrix == [[".", "#", "."], ["#", "#", "#"]]
-    assert m_len == 2
-    assert n_len == 3
+    assert result.data == [[".", "#", "."], ["#", "#", "#"]]
 
 
 @pytest.mark.parametrize(
@@ -29,6 +26,6 @@ def test_make_string_matrix_from_input(input_s) -> None:
     ],
 )
 def test_make_int_matrix_from_input(input_s, expected) -> None:
-    result = make_matrix_from_input(input_s, split_by=" ", cast_func=int)
+    result = Matrix.create_from_input(input_s, split_by=" ", cast_func=int)
 
-    assert result == (expected, 3, 2)
+    assert result.data == expected

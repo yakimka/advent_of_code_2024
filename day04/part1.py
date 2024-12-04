@@ -11,57 +11,21 @@ import support as sup
 INPUT_TXT = Path(__file__).parent / "input.txt"
 
 
-XMAS = "XMAS"
+XMAS = ["X", "M", "A", "S"]
 
 
 def compute(s: str) -> int:
     total = 0
-    matrix, m_len, n_len = sup.make_matrix_from_input(s)
+    matrix = sup.Matrix.create_from_input(s)
     for m, line in enumerate(matrix):
         for n, char in enumerate(line):
             if char != "X":
                 continue
-            paths = _find_xmas(matrix, [(m, n)])
-            for path in paths:
-                if _is_diag_or_cross(path):
+            for direction in sup.Direction:
+                values = matrix.get_values(m, n, direction, 4)
+                if values == XMAS:
                     total += 1
-
     return total
-
-
-def _find_xmas(
-    matrix: list[list[str]], path: list[tuple[int, int]]
-) -> list[list[tuple[int, int]]]:
-    start_m, start_n = path[-1]
-    val = matrix[start_m][start_n]
-    if val not in XMAS:
-        return []
-    if val == XMAS[-1]:
-        return [path]
-
-    next_val = XMAS[len(path)]
-
-    m_len = len(matrix)
-    n_len = len(matrix[0])
-    result = []
-    for neighbor in sup.neighbors_cross_diag(
-        start_m, start_n, max_bounds=(m_len - 1, n_len - 1)
-    ):
-        next_m, next_n = neighbor
-        if matrix[next_m][next_n] != next_val:
-            continue
-        res = _find_xmas(matrix, path + [neighbor])
-        result.extend(res)
-    return result
-
-
-def _is_diag_or_cross(path: list[tuple[int, int]]) -> bool:
-    first = path[0]
-    if all(m == first[0] for m, n in path):
-        return True
-    if all(n == first[1] for m, n in path):
-        return True
-    return all(abs(m - first[0]) == abs(n - first[1]) for m, n in path)
 
 
 INPUT_S = """\
