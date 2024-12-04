@@ -11,8 +11,19 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import deque
-from functools import partial
-from typing import Any, Callable, Generator, Hashable, Iterable, TextIO, TypeVar
+from dataclasses import dataclass
+from enum import Enum
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Hashable,
+    Iterable,
+    Iterator,
+    NamedTuple,
+    TextIO,
+    TypeVar,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -238,41 +249,119 @@ class Range:
         return result
 
 
+class Vector2D(NamedTuple):
+    x: int
+    y: int
+
+    def __add__(self, other: Vector2D | tuple[int, int]) -> Vector2D:
+        x, y = other
+        return Vector2D(self.x + x, self.y + y)
+
+    def __mul__(self, other: int) -> Vector2D:
+        return Vector2D(self.x * other, self.y * other)
+
+
+class Direction(Vector2D, Enum):
+    UP = Vector2D(-1, 0)
+    DOWN = Vector2D(1, 0)
+    LEFT = Vector2D(0, -1)
+    RIGHT = Vector2D(0, 1)
+    UPLEFT = Vector2D(-1, -1)
+    UPRIGHT = Vector2D(-1, 1)
+    DOWNLEFT = Vector2D(1, -1)
+    DOWNRIGHT = Vector2D(1, 1)
+
+
 Coords = tuple[int, int]
 inf_coords = (float("inf"), float("inf"))
 T = TypeVar("T")
 
 
-def make_matrix_from_input(
-    s: str, *, split_by: str = "", cast_func: Callable[[str], T] = str
-) -> tuple[list[list[T]], int, int]:
-    matrix = []
-    for line in s.strip().splitlines():
-        if split_by:
-            line = line.split(split_by)
-        if cast_func is not str:
-            matrix.append([cast_func(item) for item in line])
-        else:
-            matrix.append(list(line))
+@dataclass
+class Matrix:
+    data: list[list[T]]
 
-    m_len = len(matrix)
-    n_len = len(matrix[0])
-    return matrix, m_len, n_len
+    @property
+    def m_len(self) -> int:
+        return len(self.data)
 
+    @property
+    def n_len(self) -> int:
+        return len(self.data[0])
 
-FilterFunc = Callable[[Iterable[Coords]], Generator[Coords, None, None]]
+    @property
+    def bounds(self) -> tuple[int, int]:
+        return self.m_len - 1, self.n_len - 1
 
+    @classmethod
+    def create_from_input(
+        cls, s: str, *, split_by: str = "", cast_func: Callable[[str], T] = str
+    ) -> Matrix:
+        matrix = []
+        for line in s.strip().splitlines():
+            if split_by:
+                line = line.split(split_by)
+            if cast_func is not str:
+                matrix.append([cast_func(item) for item in line])
+            else:
+                matrix.append(list(line))
 
-def neighbors_cross(
-    m: int, n: int, *, max_bounds: Coords = inf_coords
-) -> Generator[Coords, None, None]:
-    neighbors = (
-        (m, n - 1),
-        (m - 1, n),
-        (m + 1, n),
-        (m, n + 1),
-    )
-    yield from filter_neighbors(neighbors, max_bounds=max_bounds)
+        return cls(matrix)
+
+    def __iter__(self) -> Iterator[list[T]]:
+        return iter(self.data)
+
+    def __getitem__(self, m: int) -> list[T]:
+        return self.data[m]
+
+    def neighbors_cross(self, m: int, n: int) -> Generator[Coords, None, None]:
+        neighbors = (
+            (m, n - 1),
+            (m - 1, n),
+            (m + 1, n),
+            (m, n + 1),
+        )
+        yield from filter_neighbors(neighbors, max_bounds=self.bounds)
+
+    def neighbors_diag(self, m: int, n: int) -> Generator[Coords, None, None]:
+        neighbors = (
+            (m - 1, n - 1),
+            (m + 1, n - 1),
+            (m - 1, n + 1),
+            (m + 1, n + 1),
+        )
+        yield from filter_neighbors(neighbors, max_bounds=self.bounds)
+
+    def neighbors_cross_diag(self, m: int, n: int) -> Generator[Coords, None, None]:
+        yield from self.neighbors_cross(m, n)
+        yield from self.neighbors_diag(m, n)
+
+    def next_coords(
+        self, m: int, n: int, direction: Vector2D, size: int = 1
+    ) -> Coords | None:
+        next_m, next_n = m + direction.x * size, n + direction.y * size
+        if (
+            0 > next_m
+            or 0 > next_n
+            or next_m > self.bounds[0]
+            or next_n > self.bounds[1]
+        ):
+            return None
+
+        return next_m, next_n
+
+    def get_values(self, m: int, n: int, direction: Vector2D, size: int = 2) -> list[T]:
+        results = []
+        for i in range(size):
+            next_m, next_n = m + direction.x * i, n + direction.y * i
+            if next_m < 0 or next_n < 0:
+                return results
+
+            try:
+                results.append(self.data[next_m][next_n])
+            except IndexError:
+                return results
+        return results
 
 
 def filter_neighbors(
@@ -285,83 +374,8 @@ def filter_neighbors(
     )
 
 
-def neighbors_diag(
-    m: int, n: int, *, max_bounds: Coords = inf_coords
-) -> Generator[Coords, None, None]:
-    neighbors = (
-        (m - 1, n - 1),
-        (m + 1, n - 1),
-        (m - 1, n + 1),
-        (m + 1, n + 1),
-    )
-    yield from filter_neighbors(neighbors, max_bounds=max_bounds)
-
-
-def neighbors_cross_diag(
-    m: int, n: int, *, max_bounds: Coords = inf_coords
-) -> Generator[Coords, None, None]:
-    yield from neighbors_cross(m, n, max_bounds=max_bounds)
-    yield from neighbors_diag(m, n, max_bounds=max_bounds)
-
-
 def cartesian_shortest_path(coords1: Coords, coords2: Coords) -> int:
     return abs(coords1[0] - coords2[0]) + abs(coords1[1] - coords2[1])
-
-
-def cartesian_next_coords(x: int, y: int, direction: str, size: int = 1) -> Coords:
-    if direction == "up":
-        return x - size, y
-    elif direction == "down":
-        return x + size, y
-    elif direction == "left":
-        return x, y - size
-    elif direction == "right":
-        return x, y + size
-    else:
-        raise ValueError(f"Unknown direction {direction}")
-
-
-def next_coords(
-    m: int, n: int, direction: str, max_bounds: tuple[int, int] = inf_coords
-) -> Coords | None:
-    if direction == "up":
-        next_m, next_n = m - 1, n
-    elif direction == "down":
-        next_m, next_n = m + 1, n
-    elif direction == "left":
-        next_m, next_n = m, n - 1
-    elif direction == "right":
-        next_m, next_n = m, n + 1
-    else:
-        raise ValueError(f"Unknown direction {direction}")
-
-    if 0 > next_m or 0 > next_n or next_m > max_bounds[0] or next_n > max_bounds[1]:
-        return None
-
-    return next_m, next_n
-
-
-def num_of_next_coords(
-    m: int, n: int, direction: str, max_bounds: tuple[int, int] = inf_coords
-) -> int:
-    if direction == "up":
-        return m
-    elif direction == "down":
-        return max_bounds[0] - m
-    elif direction == "left":
-        return n
-    elif direction == "right":
-        return max_bounds[1] - n
-    else:
-        raise ValueError(f"Unknown direction {direction}")
-
-
-TC = TypeVar("TC")
-
-
-def max_bounds_closure(func: TC, matrix: list[list[Any]]) -> TC:
-    max_bounds = (len(matrix) - 1, len(matrix[0]) - 1)
-    return partial(func, max_bounds=max_bounds)
 
 
 HT = TypeVar("HT", bound=Hashable)

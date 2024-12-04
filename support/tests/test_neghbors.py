@@ -1,6 +1,15 @@
 import pytest
 
-from support import neighbors_cross, neighbors_cross_diag, neighbors_diag
+from support import Matrix
+
+
+@pytest.fixture()
+def make_matrix():
+    def maker(bounds):
+        max_m, max_n = bounds
+        return Matrix([[0 for _ in range(max_n + 1)] for _ in range(max_m + 1)])
+
+    return maker
 
 
 @pytest.mark.parametrize(
@@ -12,10 +21,11 @@ from support import neighbors_cross, neighbors_cross_diag, neighbors_diag
         ((1, 1), (1, 1), [(1, 0), (0, 1)]),
     ],
 )
-def test_neighbors_cross(coords, max_bounds, expected):
+def test_neighbors_cross(make_matrix, coords, max_bounds, expected):
+    matrix = make_matrix(max_bounds)
     x, y = coords
 
-    result = neighbors_cross(x, y, max_bounds=max_bounds)
+    result = matrix.neighbors_cross(x, y)
 
     assert list(result) == expected
 
@@ -29,10 +39,11 @@ def test_neighbors_cross(coords, max_bounds, expected):
         ((1, 1), (1, 1), [(0, 0)]),
     ],
 )
-def test_neighbors_diag(coords, max_bounds, expected):
+def test_neighbors_diag(make_matrix, coords, max_bounds, expected):
+    matrix = make_matrix(max_bounds)
     x, y = coords
 
-    result = neighbors_diag(x, y, max_bounds=max_bounds)
+    result = matrix.neighbors_diag(x, y)
 
     assert list(result) == expected
 
@@ -58,9 +69,10 @@ def test_neighbors_diag(coords, max_bounds, expected):
         ),
     ],
 )
-def test_neighbors_cross_diag(coords, max_bounds, expected):
+def test_neighbors_cross_diag(make_matrix, coords, max_bounds, expected):
+    matrix = make_matrix(max_bounds)
     x, y = coords
 
-    result = neighbors_cross_diag(x, y, max_bounds=max_bounds)
+    result = matrix.neighbors_cross_diag(x, y)
 
     assert list(result) == expected
