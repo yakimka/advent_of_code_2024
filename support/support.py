@@ -452,3 +452,28 @@ def a_star(
                 prev[vertex] = current
 
     return dist, prev
+
+
+def topological_sort(graph: dict[HT, list[HT]]) -> list[HT]:
+    # https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
+    result = []
+    temp_marks = set()
+    perm_marks = set()
+
+    def visit(node: HT) -> None:
+        if node in perm_marks:
+            return
+        if node in temp_marks:
+            raise ValueError("graph has at least one cycle")
+
+        temp_marks.add(node)
+        for neighbor in graph.get(node, []):
+            visit(neighbor)
+        temp_marks.remove(node)
+        perm_marks.add(node)
+        result.append(node)
+
+    for node in graph:
+        visit(node)
+
+    return result
