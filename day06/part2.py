@@ -24,9 +24,6 @@ class PuzzleData(NamedTuple):
 def compute(s: str) -> int:
     obstacles = set()
     guard_pos = None
-    directions = cycle(
-        [sup.Direction.UP, sup.Direction.RIGHT, sup.Direction.DOWN, sup.Direction.LEFT]
-    )
     bound_m = 0
     bound_n = 0
     for m, line in enumerate(s.splitlines()):
@@ -38,22 +35,14 @@ def compute(s: str) -> int:
         bound_n = len(line) - 1
         bound_m = m
 
-    next_coords = guard_pos
-    current_direction = next(directions)
-    visited = {(*next_coords, current_direction)}
-    while True:
-        try_next = get_next_coords(
-            *next_coords, direction=current_direction, m_bound=bound_m, n_bound=bound_n
-        )
-        if try_next is None:
-            break
-
-        if try_next in obstacles:
-            current_direction = next(directions)
-            visited.add((*next_coords, current_direction))
-            continue
-        next_coords = try_next
-        visited.add((*next_coords, current_direction))
+    directions = cycle(
+        [sup.Direction.UP, sup.Direction.RIGHT, sup.Direction.DOWN, sup.Direction.LEFT]
+    )
+    visited = set()
+    first_run_loop = find_loop(
+        PuzzleData(obstacles, guard_pos, directions, bound_m, bound_n), visited
+    )
+    assert first_run_loop is False, "First run should not have a loop"
 
     variants = build_variants(
         original_path=visited,
@@ -64,7 +53,7 @@ def compute(s: str) -> int:
     )
     total = 0
     for variant in variants:
-        if find_loop(variant):
+        if find_loop(variant, None):
             total += 1
 
     return total
@@ -106,10 +95,12 @@ def build_variants(
     return results
 
 
-def find_loop(data: PuzzleData) -> bool:
+def find_loop(
+    data: PuzzleData, visited_container: set[tuple[int, int, sup.Vector2D]] | None
+) -> bool:
     next_coords = data.guard_pos
     current_direction = next(data.directions)
-    visited = {(next_coords, current_direction)}
+    visited = {(*next_coords, current_direction)}
 
     while True:
         try_next = get_next_coords(
@@ -123,11 +114,15 @@ def find_loop(data: PuzzleData) -> bool:
 
         if try_next in data.obstacles:
             current_direction = next(data.directions)
+            visited.add((*next_coords, current_direction))
             continue
         next_coords = try_next
-        if (next_coords, current_direction) in visited:
+        if (*next_coords, current_direction) in visited:
             return True
-        visited.add((next_coords, current_direction))
+        visited.add((*next_coords, current_direction))
+
+    if visited_container is not None:
+        visited_container.update(visited)
 
     return False
 
