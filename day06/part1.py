@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import timeit
+from itertools import cycle
 from pathlib import Path
 
 import pytest
@@ -12,18 +13,52 @@ INPUT_TXT = Path(__file__).parent / "input.txt"
 
 
 def compute(s: str) -> int:
-    for num in sup.iter_lines_as_numbers(s):
-        pass
+    data = []
+    guard_pos = None
+    directions = cycle(
+        [sup.Direction.UP, sup.Direction.RIGHT, sup.Direction.DOWN, sup.Direction.LEFT]
+    )
+    for m, line in enumerate(s.splitlines()):
+        row = []
+        for n, char in enumerate(line):
+            if char == "^":
+                guard_pos = (m, n)
+            row.append(char)
+        data.append(row)
 
-    for line in s.splitlines():
-        pass
+    matrix = sup.Matrix(data)
+    next_coords = guard_pos
+    current_direction = next(directions)
+    visited = {next_coords}
+    while True:
+        try_next = matrix.next_coords(*next_coords, direction=current_direction)
+        if try_next is None:
+            break
 
-    return 0
+        next_m, next_n = try_next
+        next_val = matrix[next_m][next_n]
+        if next_val == "#":
+            current_direction = next(directions)
+            continue
+        next_coords = (next_m, next_n)
+        visited.add(next_coords)
+
+    return len(visited)
 
 
 INPUT_S = """\
+....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#...
 """
-EXPECTED = 21000
+EXPECTED = 41
 
 
 @pytest.mark.parametrize(
@@ -36,11 +71,10 @@ def test_debug(input_s: str, expected: int) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 0
+    assert result == 5239
 
 
 def read_input() -> str:
