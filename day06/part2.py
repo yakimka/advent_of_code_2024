@@ -19,7 +19,6 @@ class PuzzleData(NamedTuple):
     directions: Iterator[sup.Vector2D]
     m_bound: int
     n_bound: int
-    added_obstacle: tuple[int, int] | None = None
 
 
 def compute(s: str) -> int:
@@ -51,6 +50,7 @@ def compute(s: str) -> int:
 
         if try_next in obstacles:
             current_direction = next(directions)
+            visited.add((*next_coords, current_direction))
             continue
         next_coords = try_next
         visited.add((*next_coords, current_direction))
@@ -68,16 +68,6 @@ def compute(s: str) -> int:
             total += 1
 
     return total
-
-
-# [
-# (6, 3), +
-# (7, 6), +
-# (7, 7), +
-# (8, 1), +
-# (8, 3), +
-# (9, 7), +
-# ]
 
 
 def build_variants(
@@ -110,7 +100,6 @@ def build_variants(
                 ),
                 m_bound=m_bound,
                 n_bound=n_bound,
-                added_obstacle=new_obstacle,
             )
         )
         added.add(new_obstacle)
@@ -181,7 +170,7 @@ def test_debug(input_s: str, expected: int) -> None:
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result > 1715
+    assert result == 1753
 
 
 def read_input() -> str:
