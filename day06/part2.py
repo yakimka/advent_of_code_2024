@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import timeit
+from concurrent.futures.process import ProcessPoolExecutor
 from itertools import cycle
 from pathlib import Path
 from typing import Iterator, NamedTuple
@@ -51,12 +52,9 @@ def compute(s: str) -> int:
         m_bound=bound_m,
         n_bound=bound_n,
     )
-    total = 0
-    for variant in variants:
-        if find_loop(variant, None):
-            total += 1
 
-    return total
+    with ProcessPoolExecutor() as executor:
+        return sum(executor.map(find_loop, variants))
 
 
 def build_variants(
@@ -96,7 +94,8 @@ def build_variants(
 
 
 def find_loop(
-    data: PuzzleData, visited_container: set[tuple[int, int, sup.Vector2D]] | None
+    data: PuzzleData,
+    visited_container: set[tuple[int, int, sup.Vector2D]] | None = None,
 ) -> bool:
     next_coords = data.guard_pos
     current_direction = next(data.directions)
@@ -178,7 +177,7 @@ if __name__ == "__main__":
     print("Answer is:     ", compute(input_data))
 
     if "-b" in sys.argv:
-        number_of_runs = 100
+        number_of_runs = 10
         bench_time = timeit.timeit(
             "compute(data)",
             setup="from __main__ import compute",
