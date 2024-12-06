@@ -4,6 +4,7 @@ import sys
 import timeit
 from itertools import cycle
 from pathlib import Path
+from typing import Iterator, NamedTuple
 
 import pytest
 
@@ -12,8 +13,17 @@ import support as sup
 INPUT_TXT = Path(__file__).parent / "input.txt"
 
 
+class PuzzleData(NamedTuple):
+    obstacles: set[tuple[int, int]]
+    guard_pos: tuple[int, int]
+    directions: Iterator[sup.Vector2D]
+    m_bound: int
+    n_bound: int
+    added_obstacle: tuple[int, int] | None = None
+
+
 def compute(s: str) -> int:
-    obstacles = []
+    obstacles = set()
     guard_pos = None
     directions = cycle(
         [sup.Direction.UP, sup.Direction.RIGHT, sup.Direction.DOWN, sup.Direction.LEFT]
@@ -25,13 +35,13 @@ def compute(s: str) -> int:
             if char == "^":
                 guard_pos = (m, n)
             elif char == "#":
-                obstacles.append((m, n))
+                obstacles.add((m, n))
         bound_n = len(line) - 1
         bound_m = m
 
     next_coords = guard_pos
     current_direction = next(directions)
-    visited = {next_coords}
+    visited = {(*next_coords, current_direction)}
     while True:
         try_next = get_next_coords(
             *next_coords, direction=current_direction, m_bound=bound_m, n_bound=bound_n
@@ -43,9 +53,94 @@ def compute(s: str) -> int:
             current_direction = next(directions)
             continue
         next_coords = try_next
-        visited.add(next_coords)
+        visited.add((*next_coords, current_direction))
 
-    return len(visited)
+    variants = build_variants(
+        original_path=visited,
+        guard_pos=guard_pos,
+        obstacles=obstacles,
+        m_bound=bound_m,
+        n_bound=bound_n,
+    )
+    total = 0
+    for variant in variants:
+        if find_loop(variant):
+            total += 1
+
+    return total
+
+
+# [
+# (6, 3), +
+# (7, 6), +
+# (7, 7), +
+# (8, 1), +
+# (8, 3), +
+# (9, 7), +
+# ]
+
+
+def build_variants(
+    original_path: set[tuple[int, int, sup.Vector2D]],
+    guard_pos: tuple[int, int],
+    obstacles: set[tuple[int, int]],
+    m_bound: int,
+    n_bound: int,
+) -> list[PuzzleData]:
+    results = []
+    added = set(guard_pos) | obstacles
+    for pos_m, pos_n, pos_dir in original_path:
+        new_obstacle = get_next_coords(
+            pos_m, pos_n, direction=pos_dir, m_bound=m_bound, n_bound=n_bound
+        )
+        if new_obstacle is None or new_obstacle in added:
+            continue
+
+        results.append(
+            PuzzleData(
+                obstacles=obstacles | {new_obstacle},
+                guard_pos=guard_pos,
+                directions=cycle(
+                    [
+                        sup.Direction.UP,
+                        sup.Direction.RIGHT,
+                        sup.Direction.DOWN,
+                        sup.Direction.LEFT,
+                    ]
+                ),
+                m_bound=m_bound,
+                n_bound=n_bound,
+                added_obstacle=new_obstacle,
+            )
+        )
+        added.add(new_obstacle)
+    return results
+
+
+def find_loop(data: PuzzleData) -> bool:
+    next_coords = data.guard_pos
+    current_direction = next(data.directions)
+    visited = {(next_coords, current_direction)}
+
+    while True:
+        try_next = get_next_coords(
+            *next_coords,
+            direction=current_direction,
+            m_bound=data.m_bound,
+            n_bound=data.n_bound,
+        )
+        if try_next is None:
+            break
+
+        if try_next in data.obstacles:
+            current_direction = next(data.directions)
+            continue
+        next_coords = try_next
+        if (next_coords, current_direction) in visited:
+            return True
+        visited.add((next_coords, current_direction))
+
+    return False
 
 
 def get_next_coords(
@@ -71,7 +166,6 @@ INPUT_S = """\
 ......#...
 """
 EXPECTED = 6
-EXPECTED = 41
 
 
 @pytest.mark.parametrize(
@@ -87,7 +181,7 @@ def test_debug(input_s: str, expected: int) -> None:
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 5239
+    assert result > 1715
 
 
 def read_input() -> str:
