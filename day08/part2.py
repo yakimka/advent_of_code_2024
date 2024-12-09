@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import timeit
+from math import gcd
 from pathlib import Path
 
 import pytest
@@ -14,10 +15,10 @@ INPUT_TXT = Path(__file__).parent / "input.txt"
 def compute(s: str) -> int:
     matrix = sup.Matrix.create_from_input(s)
 
-    antennas_by_freq = {}
     rows = matrix.m_len
     cols = matrix.n_len
 
+    antennas_by_freq = {}
     for r in range(rows):
         for c in range(cols):
             ch = matrix[r][c]
@@ -27,25 +28,39 @@ def compute(s: str) -> int:
     antinodes = set()
 
     for freq, positions in antennas_by_freq.items():
-        n = len(positions)
-        if n < 2:
-            # Need at least two antennas for antinodes
+        if len(positions) < 2:
             continue
 
+        lines = {}
+
+        n = len(positions)
         for i in range(n):
+            r1, c1 = positions[i]
             for j in range(i + 1, n):
-                r1, c1 = positions[i]
                 r2, c2 = positions[j]
 
-                ar = 2 * r1 - r2
-                ac = 2 * c1 - c2
-                if 0 <= ar < rows and 0 <= ac < cols:
-                    antinodes.add((ar, ac))
+                A = c2 - c1
+                B = r1 - r2
+                C = r2 * c1 - r1 * c2
 
-                br = 2 * r2 - r1
-                bc = 2 * c2 - c1
-                if 0 <= br < rows and 0 <= bc < cols:
-                    antinodes.add((br, bc))
+                g = gcd(A, gcd(B, C))
+                if g != 0:
+                    A //= g
+                    B //= g
+                    C //= g
+                if A < 0 or (A == 0 and B < 0) or (A == 0 and B == 0 and C < 0):
+                    A, B, C = -A, -B, -C
+
+                lines.setdefault((A, B, C), []).append((r1, c1))
+                lines[(A, B, C)].append((r2, c2))
+
+        for (A, B, C), pts in lines.items():
+            for r in range(rows):
+                val = -B * r - C
+                if val % A == 0:
+                    c = val // A
+                    if 0 <= c < cols:
+                        antinodes.add((r, c))
 
     return len(antinodes)
 
@@ -64,7 +79,7 @@ INPUT_S = """\
 ............
 ............
 """
-EXPECTED = 14
+EXPECTED = 34
 
 
 @pytest.mark.parametrize(
@@ -80,7 +95,7 @@ def test_debug(input_s: str, expected: int) -> None:
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 390
+    assert result == 1246
 
 
 def read_input() -> str:
