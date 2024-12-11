@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import sys
@@ -14,20 +15,14 @@ INPUT_TXT = Path(__file__).parent / "input.txt"
 
 def compute(s: str) -> int:
     stones = s.splitlines()[0].split()
-
-    total = 0
-    for stone in stones:
-        total += blink(stone, 25)
-
-    return total
+    return sum(blink(stone, 75) for stone in stones)
 
 
+@lru_cache(maxsize=None)
 def blink(stone: str, depth: int) -> int:
     left, right = _blink_one(stone)
     if depth == 1:
-        if right is None:
-            return 1
-        return 2
+        return 1 if right is None else 2
 
     count = blink(left, depth - 1)
     if right is not None:
@@ -35,6 +30,7 @@ def blink(stone: str, depth: int) -> int:
     return count
 
 
+@lru_cache(maxsize=None)
 def _blink_one(stone: str) -> tuple[str, str | None]:
     if stone == "0":
         return "1", None
@@ -52,7 +48,7 @@ def _blink_one(stone: str) -> tuple[str, str | None]:
 INPUT_S = """\
 125 17
 """
-EXPECTED = 55312
+EXPECTED = 65601038650482
 
 
 @pytest.mark.parametrize(
@@ -65,11 +61,10 @@ def test_debug(input_s: str, expected: int) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 0
+    assert result == 242090118578155
 
 
 def read_input() -> str:
