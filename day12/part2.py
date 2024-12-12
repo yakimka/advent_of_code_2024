@@ -18,21 +18,13 @@ def compute(s: str) -> int:
     total = 0
     for m, row in enumerate(matrix):
         for n, cell in enumerate(row):
-            area, perimeter = calculate_area_and_perimeter(matrix, seen, m, n)
-            total += area * perimeter
+            area, corners = calculate_area_and_corners(matrix, seen, m, n)
+            total += area * corners
 
     return total
 
 
-DIRECTIONS = [
-    sup.Direction.UP,
-    sup.Direction.DOWN,
-    sup.Direction.LEFT,
-    sup.Direction.RIGHT,
-]
-
-
-def calculate_area_and_perimeter(
+def calculate_area_and_corners(
     matrix: sup.Matrix, seen: set[tuple[int, int]], m: int, n: int
 ) -> tuple[int, int]:
     coords = (m, n)
@@ -41,32 +33,31 @@ def calculate_area_and_perimeter(
 
     seen.add(coords)
 
-    area = 1
     value = matrix[m][n]
     neighbors = []
-    for item in matrix.neighbors_cross_diag_all(m, n):
+    area = 1
+    corners = 0
+    for i, item in enumerate(matrix.neighbors_cross_diag_all(m, n)):
         if item is None:
             neighbors.append(None)
-        else:
-            n_m, n_n = item
-            if matrix[n_m][n_n] == value:
-                neighbors.append(value)
-            else:
-                neighbors.append(None)
-    corners = _calc_corners(neighbors)
-
-    for direction in DIRECTIONS:
-        next_coords = matrix.next_coords(m, n, direction)
-        if next_coords is None:
             continue
-        next_m, next_n = next_coords
-        next_value = matrix[next_m][next_n]
-        if next_value == value:
-            next_area, next_corners = calculate_area_and_perimeter(
-                matrix, seen, next_m, next_n
-            )
-            area += next_area
-            corners += next_corners
+
+        n_m, n_n = item
+        if matrix[n_m][n_n] == value:
+            neighbors.append("X")
+        else:
+            neighbors.append(None)
+
+        if i % 2 != 0:  # skip diagonals
+            next_m, next_n = item
+            next_value = matrix[next_m][next_n]
+            if next_value == value:
+                next_area, next_corners = calculate_area_and_corners(
+                    matrix, seen, next_m, next_n
+                )
+                area += next_area
+                corners += next_corners
+    corners += _calc_corners(neighbors)
 
     return area, corners
 
