@@ -336,6 +336,29 @@ class Matrix:
         yield from self.neighbors_cross(m, n)
         yield from self.neighbors_diag(m, n)
 
+    def neighbors_cross_diag_all(
+        self, m: int, n: int, *, default=None
+    ) -> Generator[Coords | None, None, None]:
+        """
+        Return all neighbors, including out of bounds.
+        Clockwise order (from up-left corner).
+        """
+        neighbors = (
+            (m - 1, n - 1),
+            (m - 1, n),
+            (m - 1, n + 1),
+            (m, n + 1),
+            (m + 1, n + 1),
+            (m + 1, n),
+            (m + 1, n - 1),
+            (m, n - 1),
+        )
+        max_bounds = self.bounds
+        yield from (
+            (m, n) if 0 <= m <= max_bounds[0] and 0 <= n <= max_bounds[1] else default
+            for m, n in neighbors
+        )
+
     def next_coords(
         self, m: int, n: int, direction: Vector2D, size: int = 1
     ) -> Coords | None:

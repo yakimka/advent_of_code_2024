@@ -42,25 +42,44 @@ def calculate_area_and_perimeter(
     seen.add(coords)
 
     area = 1
-    perimeter = 0
     value = matrix[m][n]
+    neighbors = []
+    for item in matrix.neighbors_cross_diag_all(m, n):
+        if item is None:
+            neighbors.append(None)
+        else:
+            n_m, n_n = item
+            if matrix[n_m][n_n] == value:
+                neighbors.append(value)
+            else:
+                neighbors.append(None)
+    corners = _calc_corners(neighbors)
+
     for direction in DIRECTIONS:
         next_coords = matrix.next_coords(m, n, direction)
         if next_coords is None:
-            perimeter += 1
             continue
         next_m, next_n = next_coords
         next_value = matrix[next_m][next_n]
         if next_value == value:
-            next_area, next_perimeter = calculate_area_and_perimeter(
+            next_area, next_corners = calculate_area_and_perimeter(
                 matrix, seen, next_m, next_n
             )
             area += next_area
-            perimeter += next_perimeter
-        else:
-            perimeter += 1
+            corners += next_corners
 
-    return area, perimeter
+    return area, corners
+
+
+def _calc_corners(neighbors: list[str | None]) -> int:
+    corners = 0
+    for one, two, three in [(7, 0, 1), (1, 2, 3), (3, 4, 5), (5, 6, 7)]:
+        if neighbors[one] is None and neighbors[three] is None:
+            corners += 1
+        if neighbors[two] is None and neighbors[one] and neighbors[three]:
+            corners += 1
+
+    return corners
 
 
 INPUT_S1 = """\
@@ -124,11 +143,10 @@ def test_debug(input_s: str, expected: int) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 0
+    assert result == 814302
 
 
 def read_input() -> str:
