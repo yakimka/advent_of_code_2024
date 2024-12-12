@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import sys
@@ -13,18 +12,39 @@ INPUT_TXT = Path(__file__).parent / "input.txt"
 
 
 def compute(s: str) -> int:
-    for num in sup.iter_lines_as_numbers(s):
-        pass
+    stones = s.splitlines()[0].split()
 
-    for line in s.splitlines():
-        pass
+    for _ in range(25):
+        stones = blink(stones)
 
-    return 0
+    return len(stones)
+
+
+def blink(stones: list[str]) -> list[str]:
+    if len(stones) == 1:
+        stone = stones[0]
+        if stone == "0":
+            return ["1"]
+        stone_len = len(stone)
+        if stone_len % 2 == 0:
+            middle = stone_len // 2
+            first_half = stone[:middle]
+            second_half = stone[middle:]
+            if second_half.startswith("0"):
+                second_half = second_half.lstrip("0") or "0"
+            return [first_half, second_half]
+        return [str(int(stone) * 2024)]
+    else:
+        results = []
+        for stone in stones:
+            results.extend(blink([stone]))
+        return results
 
 
 INPUT_S = """\
+125 17
 """
-EXPECTED = 21000
+EXPECTED = 55312
 
 
 @pytest.mark.parametrize(
@@ -37,11 +57,10 @@ def test_debug(input_s: str, expected: int) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 0
+    assert result == 203953
 
 
 def read_input() -> str:
