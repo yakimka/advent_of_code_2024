@@ -16,7 +16,8 @@ def compute(s: str) -> int:
     button_a = None
     button_b = None
     prize = None
-    for line in s.splitlines():
+    total = 0
+    for line in s.splitlines() + [""]:
         if line.startswith("Button A:"):
             button_a = _parse_button(line)
         elif line.startswith("Button B:"):
@@ -24,15 +25,27 @@ def compute(s: str) -> int:
         elif line.startswith("Prize:"):
             prize = _parse_prize(line)
         elif not line.strip():
-            a = 1
+            res = solve_equation(button_a, button_b, prize)
+            if res is None:
+                continue
+            a, b = res
+            total += a * 3 + b
         else:
             raise ValueError(f"Unknown line: {line}")
 
-    return 0
+    return int(total)
 
 
-def build_graph(button_a: tuple[int, int], button_b: tuple[int, int], prize: tuple[int, int]) -> dict[tuple[int, int], dict[tuple[int, int], int]]:
-    pass
+def solve_equation(button_a, button_b, prize) -> tuple[int, int] | None:
+    ax, ay = button_a
+    bx, by = button_b
+    px, py = prize
+
+    a = (px * -by + py * bx) / (ay * bx + ax * -by)
+    if not a.is_integer():
+        return None
+    b = (px - ax * a) / bx
+    return a, b
 
 
 def _parse_button(line: str) -> tuple[int, int]:
@@ -77,11 +90,10 @@ def test_debug(input_s: str, expected: int) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 0
+    assert result == 25751
 
 
 def read_input() -> str:
