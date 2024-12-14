@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import math
 import sys
 import timeit
 from itertools import count
 from pathlib import Path
-
-import pytest
 
 import support as sup
 
@@ -22,10 +19,8 @@ def compute(s: str, width: int = 101, height: int = 103) -> int:
         velocity_x, velocity_y = map(int, second[2:].split(","))
         robots.append([start_x, start_y, velocity_x, velocity_y])
 
-    for i in count():
-        if i >= 100:
-            break
-
+    for i in count(1):
+        quadrants_counters = [0, 0, 0, 0]
         for robot in robots:
             start_x, start_y, velocity_x, velocity_y = robot
             end_x, end_y = simulate(
@@ -34,14 +29,26 @@ def compute(s: str, width: int = 101, height: int = 103) -> int:
             robot[0] = end_x
             robot[1] = end_y
 
-    quadrants_counters = [0, 0, 0, 0]
-    for robot in robots:
-        end_x, end_y = robot[:2]
-        quadrant = calc_quadrant(end_x, end_y, width, height)
-        if quadrant is not None:
-            quadrants_counters[quadrant - 1] += 1
+            quadrant = calc_quadrant(end_x, end_y, width, height)
+            if quadrant is not None:
+                quadrants_counters[quadrant - 1] += 1
 
-    return math.prod(item for item in quadrants_counters if item > 0)
+        # I have no f***ing idea how Christmas tree are supposed to look like
+        # so I'm just going to check if all robots are in unique positions
+        # and hope for the best.
+        # P.S. I'm not a fan of this solution and this definitely is not a general
+        # solution for this problem and will not work for all inputs.
+        if unique_positions_heuristic(robots):
+            # grid = [["." for _ in range(width)] for _ in range(height)]
+            # for robot in robots:
+            #     grid[robot[1]][robot[0]] = "#"
+            # with open("output.txt", "w") as f:
+            #     sup.print_matrix(grid, file=f)
+            return i
+
+
+def unique_positions_heuristic(robots: list[list[int]]) -> bool:
+    return len({(robot[0], robot[1]) for robot in robots}) == len(robots)
 
 
 def simulate(
@@ -87,37 +94,10 @@ def calc_quadrant(x: int, y: int, width: int, height: int) -> int | None:
             return 4
 
 
-INPUT_S = """\
-p=0,4 v=3,-3
-p=6,3 v=-1,-3
-p=10,3 v=-1,2
-p=2,0 v=2,-1
-p=0,0 v=1,3
-p=3,0 v=-2,-2
-p=7,6 v=-1,-3
-p=3,0 v=-1,-2
-p=9,3 v=2,3
-p=7,3 v=-1,2
-p=2,4 v=2,-3
-p=9,5 v=-3,-3
-"""
-EXPECTED = 12
-
-
-@pytest.mark.parametrize(
-    "input_s,expected",
-    [
-        (INPUT_S, EXPECTED),
-    ],
-)
-def test_debug(input_s: str, expected: int) -> None:
-    assert compute(input_s, width=11, height=7) == expected
-
-
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == 226548000
+    assert result == 7753
 
 
 def read_input() -> str:
