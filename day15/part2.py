@@ -63,7 +63,7 @@ def simulate(matrix: sup.Matrix, robot_pos: list[int], direction: sup.Direction)
         move_robot(matrix, robot_pos, (next_m, next_n))
     elif next_char == "#":
         pass
-    elif next_char == "O":
+    elif next_char in "[]":
         box = detect_box(matrix, (next_m, next_n), direction)
         if is_box_movable(matrix, box, direction):
             move_box(matrix, box, direction)
@@ -83,31 +83,120 @@ def move_robot(
 def detect_box(
     matrix: sup.Matrix, start_pos: tuple[int, int], direction: sup.Direction
 ) -> list[tuple[int, int]]:
-    result = [start_pos]
     m, n = start_pos
-    while True:
-        m, n = m + direction.x, n + direction.y
-        if matrix[m][n] == "O":
-            result.append((m, n))
-        else:
-            break
+    if direction in (sup.Direction.LEFT, sup.Direction.RIGHT):
+        result = [start_pos]
+        while True:
+            m, n = m + direction.x, n + direction.y
+            if matrix[m][n] in "[]":
+                result.append((m, n))
+            else:
+                return result
+    else:
+        full_box = _find_full_box(matrix, start_pos)
+        full_boxes = _detect_box_vertical(matrix, full_box, direction)
+        box = []
+        for full_box in full_boxes:
+            for pos in full_box:
+                if pos not in box:
+                    box.append(pos)
+        return box
+
+
+def _detect_box_vertical(
+    matrix: sup.Matrix,
+    full_box: tuple[tuple[int, int], tuple[int, int]],
+    direction: sup.Direction,
+) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    result = [full_box]
+    m1, n1 = full_box[0]
+    m2, n2 = full_box[1]
+
+    m1, n1 = m1 + direction.x, n1 + direction.y
+    m2, n2 = m2 + direction.x, n2 + direction.y
+    value1 = matrix[m1][n1]
+    value2 = matrix[m2][n2]
+    box1 = None
+    box2 = None
+    if value1 in "[]":
+        box1 = _find_full_box(matrix, (m1, n1))
+    if value2 in "[]":
+        box2 = _find_full_box(matrix, (m2, n2))
+    if box1 is None and box2 is None:
+        return result
+    if box1 == box2:
+        result.extend(_detect_box_vertical(matrix, box1, direction))
+        return result
+
+    if box1 is not None:
+        result.extend(_detect_box_vertical(matrix, box1, direction))
+    if box2 is not None:
+        result.extend(_detect_box_vertical(matrix, box2, direction))
     return result
+
+
+def _find_full_box(
+    matrix: sup.Matrix, start_pos: tuple[int, int]
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    m1, n1 = start_pos
+    value = matrix[m1][n1]
+    if value == "[":
+        return start_pos, (m1, n1 + 1)
+    elif value == "]":
+        return (m1, n1 - 1), start_pos
+    else:
+        raise ValueError("Invalid box start position")
 
 
 def is_box_movable(
     matrix: sup.Matrix, box: list[tuple[int, int]], direction: sup.Direction
 ) -> bool:
-    m, n = box[-1]
-    next_m, next_n = m + direction.x, n + direction.y
-    return matrix[next_m][next_n] == "."
+    for m, n in box:
+        next_m, next_n = m + direction.x, n + direction.y
+        if matrix[next_m][next_n] not in "[].":
+            return False
+    return True
 
 
 def move_box(
     matrix: sup.Matrix, box: list[tuple[int, int]], direction: sup.Direction
 ) -> None:
-    for m, n in reversed(box):
+    old_values = {}
+    for m, n in box:
+        old_values[(m, n)] = matrix[m][n]
         matrix[m][n] = "."
-        matrix[m + direction.x][n + direction.y] = "O"
+
+    for m, n in box:
+        matrix[m + direction.x][n + direction.y] = old_values[(m, n)]
+
+
+def _calc_checksum(matrix: sup.Matrix):
+    dots = 0
+    box_left = 0
+    box_right = 0
+    obstacles = 0
+    for m, row in enumerate(matrix):
+        for n, char in enumerate(row):
+            if char == ".":
+                dots += 1
+            elif char == "[":
+                box_left += 1
+            elif char == "]":
+                box_right += 1
+            elif char == "#":
+                obstacles += 1
+    return dots, box_left, box_right, obstacles
+
+
+def _check_boxes(matrix: sup.Matrix) -> list[tuple[int, int]]:
+    wrong_coordinates = []
+    for m, row in enumerate(matrix):
+        for n, char in enumerate(row):
+            if char == "[" and matrix[m][n + 1] != "]":
+                wrong_coordinates.append((m, n))
+            elif char == "]" and matrix[m][n - 1] != "[":
+                wrong_coordinates.append((m, n))
+    return wrong_coordinates
 
 
 INPUT_S1 = """\
@@ -135,18 +224,17 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^
 """
 EXPECTED1 = 9021
 INPUT_S2 = """\
-########
-#..O.O.#
-##@.O..#
-#...O..#
-#.#.O..#
-#...O..#
-#......#
-########
+#######
+#...#.#
+#.....#
+#..OO@#
+#..O..#
+#.....#
+#######
 
-<^^>>>vv<v>>v<<
+<vv<<^^<<^^
 """
-EXPECTED2 = 2028
+EXPECTED2 = 618
 
 
 @pytest.mark.parametrize(
@@ -163,7 +251,7 @@ def test_debug(input_s: str, expected: int) -> None:
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result > 0
+    assert result == 1432898
 
 
 def read_input() -> str:

@@ -314,6 +314,9 @@ class Matrix:
     def __getitem__(self, m: int) -> list[T]:
         return self.data[m]
 
+    def copy(self) -> Matrix:
+        return Matrix([row.copy() for row in self.data])
+
     def neighbors_cross(self, m: int, n: int) -> Generator[Coords, None, None]:
         neighbors = (
             (m, n - 1),
