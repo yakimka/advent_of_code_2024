@@ -13,107 +13,22 @@ INPUT_TXT = Path(__file__).parent / "input.txt"
 
 
 def compute(s: str) -> str:
-    graph = {}
+    graph_finder = sup.GraphCycleFinder()
     for line in s.splitlines():
         copm1, comp2 = line.split("-")
-        graph.setdefault(copm1, set()).add(comp2)
-        graph.setdefault(comp2, set()).add(copm1)
+        graph_finder.add_edge(copm1, comp2)
 
-    union_find = UnionFind(graph)
-    cycles = union_find.find_n_cycles(5)
-    return ""
-
-
-class UnionFind:
-    def __init__(self, graph):
-        self.parent = {}
-        self.rank = {}
-        self.graph = graph
-        self.cycles = set()
-
-        for node in graph:
-            self.parent[node] = node
-            self.rank[node] = 0
-
-    def find(self, node):
-        if self.parent[node] != node:
-            self.parent[node] = self.find(self.parent[node])  # Path compression
-        return self.parent[node]
-
-    def union(self, node1, node2):
-        root1 = self.find(node1)
-        root2 = self.find(node2)
-
-        if root1 != root2:
-            if self.rank[root1] > self.rank[root2]:
-                self.parent[root2] = root1
-            elif self.rank[root1] < self.rank[root2]:
-                self.parent[root1] = root2
-            else:
-                self.parent[root2] = root1
-                self.rank[root1] += 1
-
-    def dfs(self, path, start_node, n):
-        if len(path) == n:
-            if start_node in self.graph[path[-1]]:
-                self.cycles.add(tuple(sorted(path)))
-            return
-
-        for neighbor in self.graph[path[-1]]:
-            if neighbor not in path:
-                self.dfs(path + [neighbor], start_node, n)
-
-    def find_n_cycles(self, n):
-        visited_edges = set()
-
-        for node in self.graph:
-            for neighbor in self.graph[node]:
-                if (node, neighbor) not in visited_edges and (
-                    neighbor,
-                    node,
-                ) not in visited_edges:
-                    visited_edges.add((node, neighbor))
-                    self.union(node, neighbor)
-
-        for node in self.graph:
-            self.dfs([node], node, n)
-
-        return self.cycles
+    max_cycle = max(graph_finder.find_cycles(), key=len)
+    return ",".join(sorted(max_cycle))
 
 
 INPUT_S = """\
-kh-tc
-qp-kh
-de-cg
 ka-co
-yn-aq
-qp-ub
-cg-tb
-vc-aq
-tb-ka
-wh-tc
-yn-cg
-kh-ub
 ta-co
 de-co
-tc-td
-tb-wq
-wh-td
 ta-ka
-td-qp
-aq-cg
-wq-ub
-ub-vc
 de-ta
-wq-aq
-wq-vc
-wh-yn
 ka-de
-kh-ta
-co-tc
-wh-qp
-tb-vc
-td-yn
 """
 EXPECTED = "co,de,ka,ta"
 
@@ -128,11 +43,10 @@ def test_debug(input_s: str, expected: str) -> None:
     assert compute(input_s) == expected
 
 
-@pytest.mark.skip("Set answer for refactoring")
 def test_input() -> None:
     result = compute(read_input())
 
-    assert result == ""
+    assert result == "af,aq,ck,ee,fb,it,kg,of,ol,rt,sc,vk,zh"
 
 
 def read_input() -> str:
@@ -145,7 +59,7 @@ if __name__ == "__main__":
     print("Answer is:     ", compute(input_data))
 
     if "-b" in sys.argv:
-        number_of_runs = 100
+        number_of_runs = 10
         bench_time = timeit.timeit(
             "compute(data)",
             setup="from __main__ import compute",

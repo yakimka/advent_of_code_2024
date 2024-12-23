@@ -503,3 +503,54 @@ def topological_sort(graph: dict[HT, list[HT]]) -> list[HT]:
         visit(node)
 
     return result
+
+
+class GraphCycleFinder:
+    def __init__(self, graph: dict[HT, list[HT]] | None = None) -> None:
+        self.graph = graph or {}
+        self.cliques = []
+
+    def add_edge(self, u: HT, v: HT) -> None:
+        self.graph.setdefault(u, []).append(v)
+        self.graph.setdefault(v, []).append(u)
+
+    def bron_kerbosch(self, r: set[HT], p: set[HT], x: set[HT]):
+        """
+        Recursive Bron–Kerbosch algorithm.
+
+        https://en.wikipedia.org/wiki/Bron%E2%80%93Kerbosch_algorithm
+        """
+        if not p and not x:
+            self.cliques.append(r)
+            return
+
+        for v in list(p):
+            self.bron_kerbosch(r | {v}, p & set(self.graph[v]), x & set(self.graph[v]))
+            p.remove(v)
+            x.add(v)
+
+    def find_cliques(self) -> list[HT]:
+        """Find all maximal cliques in the graph."""
+        self.cliques = []
+        nodes = set(self.graph.keys())
+        self.bron_kerbosch(set(), nodes, set())
+        return self.cliques
+
+    def find_cycles(self) -> list[HT]:
+        """Filter cliques to find those that form cycles."""
+        self.find_cliques()
+        cycles = []
+
+        for clique in self.cliques:
+            if len(clique) >= 3:
+                # Verify that the clique forms a cycle
+                is_cycle = True
+                for node in clique:
+                    neighbors = set(self.graph[node])
+                    if any(n not in neighbors for n in clique if n != node):
+                        is_cycle = False
+                        break
+                if is_cycle:
+                    cycles.append(clique)
+
+        return cycles
